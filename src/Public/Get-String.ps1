@@ -48,6 +48,7 @@ PS X:\> Get-String -MaxLength 10 -MinLength 5 -MustContain "Hello"
 Z}Hello
 #>
 function Get-String {
+    [OutputType([string])]
     param(
         [parameter(ParameterSetName = "FixedLength")]
         [ValidateRange(0, [int]::MaxValue)]
@@ -71,8 +72,8 @@ function Get-String {
         [string] $MayContain,
 
         [Alias("chance")]
-        [ValidateRange(0, 1)]
-        [float] $ChanceMayContain = 0.5,
+        [ValidateRange(0, 100)]
+        [int] $ChanceMayContain = 50,
 
         [Alias("must")]
         [string] $MustContain,
@@ -94,15 +95,17 @@ function Get-String {
     elseif ($PSCmdlet.ParameterSetName -eq "VariableLength") {
         $ObjectiveLength = Get-RandomElement -LowerBound $MinLength -UpperBound $MaxLength
     }
+    Write-Verbose "The objective length is $ObjectiveLength."
 
     # If the MayContain parameter is specified, determine if the string will be present in the output
     if (-not [string]::IsNullOrEmpty($MayContain)) {
-        $RandomChance = (Get-RandomElement -LowerBound 0 -UpperBound 100) / 100
+        $RandomChance = (Get-RandomElement -LowerBound 0 -UpperBound 100)
         if ($RandomChance -le $ChanceMayContain) {
             # The string will be present in the output
             $ObjectiveLength -= $MayContain.Length
 
             $WillContainOptional = $true
+            Write-Verbose "The string specified in the MayContain parameter will be present in the output."
         }
         else {
             # The string will not be present in the output
@@ -127,6 +130,7 @@ function Get-String {
     if (-not [string]::IsNullOrEmpty($EndsWith)) {
         $ObjectiveLength -= $EndsWith.Length
     }
+    Write-Verbose "The objective length after constraints is $ObjectiveLength."
 
     $Output = @()
 
@@ -144,18 +148,21 @@ function Get-String {
     if (!([string]::IsNullOrEmpty($MayContain)) -and $WillContainOptional) {
         # Add the string to the output
         $Output += @($MayContain)
+        Write-Verbose "Added the string specified in the MayContain parameter to the output."
     }
 
     # If the MustContain parameter is specified, add the string to the output
     if (!([string]::IsNullOrEmpty($MustContain))) {
         # Add the string to the output
         $Output += @($MustContain)
+        Write-Verbose "Added the string specified in the MustContain parameter to the output."
     }
 
     # If the MustNotContain parameter is specified and it isn't the same as the MustContain or MayContain parameters, ensure that the string will not be present in the output
     if (!([string]::IsNullOrEmpty($MustNotContain)) -and !($MustNotContain.Contains($MustContain)) -and !($MustNotContain.Contains($MayContain)) -and !($MayContain.Contains($MustNotContain)) -and !($MustContain.Contains($MustNotContain))) {
         if ($Output -join "" -match $MustNotContain) {
             # The string is present in the output, generate a new string
+            Write-Verbose "The string specified in the MustNotContain parameter is present in the output. Generating a new string."
             $Output = Get-String @PSBoundParameters
         }
     }
@@ -163,6 +170,7 @@ function Get-String {
     if ($Output -isnot [string]) {
         # Scramble the output
         $Output = @($Output | Sort-Object { Get-Random })
+        Write-Verbose "Scrambled the output."
 
         # Convert the output to a string
         $Output = $Output -join ""
@@ -172,12 +180,14 @@ function Get-String {
     if (!([string]::IsNullOrEmpty($StartsWith)) -and !($Output.StartsWith($StartsWith))) {
         # Add the string to the beginning of the output
         $Output = $StartsWith + $Output
+        Write-Verbose "Added the string specified in the StartsWith parameter to the beginning of the output."
     }
 
     # If the EndsWith parameter is specified, add the string to the end of the output
     if (!([string]::IsNullOrEmpty($EndsWith)) -and !($Output.EndsWith($EndsWith))) {
         # Add the string to the end of the output
         $Output += $EndsWith
+        Write-Verbose "Added the string specified in the EndsWith parameter to the end of the output."
     }
 
     return $Output

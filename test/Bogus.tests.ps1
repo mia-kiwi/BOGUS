@@ -3,13 +3,15 @@ $VerbosePreference = 'Continue'
 Remove-Module "Bogus" -ErrorAction SilentlyContinue -Force
 Import-Module "$(($PSScriptRoot -split "\\" | Select-Object -SkipLast 1) -join "\")\src\Bogus.psd1" -Force -Prefix "Bogus"
 
+$VerbosePreference = 'SilentlyContinue'
+
 Describe "BOGUS" {
     Context "Get-BogusString" {
         It "Should return a bogus string with a set length" {
             $RandomLength = Get-Random -Minimum 1 -Maximum 10
             (Get-BogusString -Length $RandomLength).Length | Should Be $RandomLength
         }
-        It "Should retrun a bogus string with a length in a specified range" {
+        It "Should return a bogus string with a length in a specified range" {
             $RandomLowerBound = Get-Random -Minimum 1 -Maximum 10
             $RandomUpperBound = Get-Random -Minimum 11 -Maximum 20
             (Get-BogusString -Between $RandomLowerBound -And $RandomUpperBound).Length -in @($RandomLowerBound..$RandomUpperBound) | Should Be $true
@@ -31,7 +33,7 @@ Describe "BOGUS" {
             $MustNotContain.Contains("Hello") | Should Be $false
         }
         It "Should return a bogus string that may contain a specified string" {
-            $MayContain = Get-BogusString -MayContain "Hello" -ChanceMayContain 1
+            $MayContain = Get-BogusString -MayContain "Hello" -ChanceMayContain 100
             $MayContain.Contains("Hello") | Should Be $true
         }
         It "Should return a bogus string that may not contain a specified string" {
@@ -42,6 +44,30 @@ Describe "BOGUS" {
             $Charset = "ABC"
             $String = Get-BogusString -Charset $Charset.ToCharArray()
             $String -match "[^$Charset]" | Should Be $false
+        }
+    }
+    Context "Get-BogusInt16" {
+        It "Should return a bogus integer between set bounds" {
+            $RandomLowerBound = Get-Random -Minimum 1 -Maximum 10
+            $RandomUpperBound = Get-Random -Minimum 11 -Maximum 20
+            (Get-BogusInt16 -Between $RandomLowerBound -And $RandomUpperBound) -in @($RandomLowerBound..$RandomUpperBound) | Should Be $true
+        }
+        It "Should swap the upper and lower bounds if the user inverts them" {
+            $RandomLowerBound = Get-Random -Minimum 1 -Maximum 10
+            $RandomUpperBound = Get-Random -Minimum 11 -Maximum 20
+            (Get-BogusInt16 -Between $RandomUpperBound -And $RandomLowerBound) -in @($RandomLowerBound..$RandomUpperBound) | Should Be $true
+        }
+        It "Should return the lower bound if the upper bound is the same" {
+            $RandomLowerBound = Get-Random -Minimum 1 -Maximum 10
+            (Get-BogusInt16 -Between $RandomLowerBound -And $RandomLowerBound) | Should Be $RandomLowerBound
+        }
+        It "Should return a bogus that excludes specified values" {
+            $MustExclude = "1"
+            Get-BogusInt16 -Between 1 -And 100 -MustExclude $MustExclude | Should Not Be $MustExclude
+        }
+        It "Should return a bogus integer that does not match a specified pattern" {
+            $MustExclude = "1??"
+            Get-BogusInt16 -Between 99 -And 100 -MustExclude $MustExclude | Should Be 99
         }
     }
 }
